@@ -43,6 +43,8 @@ class Database;
 class Transaction
 {
 public:
+    enum class TransactionType {Deferred, Immediate, Exclusive};
+
     /**
      * @brief Begins the SQLite transaction
      *
@@ -50,7 +52,7 @@ public:
      *
      * Exception is thrown in case of error, then the Transaction is NOT initiated.
      */
-    explicit Transaction(Database& aDatabase);
+    explicit Transaction(Database& aDatabase, TransactionType type = TransactionType::Deferred);
 
     /**
      * @brief Safely rollback the transaction if it has not been committed.
@@ -61,6 +63,11 @@ public:
      * @brief Commit the transaction.
      */
     void commit();
+
+
+    void SetSavepoint(const std::string& savepoint);
+    void ReleaseSavepoint(const std::string& savepoint);
+    void RollbackSavepoint(const std::string& savepoint);
 
 private:
     // Transaction must be non-copyable

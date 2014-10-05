@@ -19,11 +19,26 @@ namespace SQLite
 
 
 // Begins the SQLite transaction
-Transaction::Transaction(Database& aDatabase) :
-    mDatabase(aDatabase),
-    mbCommited(false)
+Transaction::Transaction(Database& aDatabase, TransactionType type) 
+: mDatabase(aDatabase), mbCommited(false)
 {
-    mDatabase.exec("BEGIN");
+    switch (type)
+    {
+        case TransactionType::Deferred:
+            mDatabase.exec("BEGIN DEFERRED TRANSACTION");
+            break;
+
+        case TransactionType::Immediate:
+            mDatabase.exec("BEGIN IMMEDIATE TRANSACTION");
+            break;
+
+        case TransactionType::Exclusive:
+            mDatabase.exec("BEGIN EXCLUSIVE TRANSACTION");
+            break;
+
+        default:
+            throw SQLite::Exception("Unknown transaction type");
+    }
 }
 
 // Safely rollback the transaction if it has not been committed.
@@ -56,6 +71,22 @@ void Transaction::commit()
         throw SQLite::Exception("Transaction already commited");
     }
 }
+
+void Transaction::SetSavepoint(const std::string& savepoint)
+{
+    mDatabase.exec("SAVEPOINT " + savepoint);
+}
+
+void Transaction::ReleaseSavepoint(const std::string& savepoint)
+{
+    mDatabase.exec("RELEASE SAVEPOINT " + savepoint);
+}
+
+void Transaction::RollbackSavepoint(const std::string& savepoint)
+{
+    mDatabase.exec("ROLLBACK TO SAVEPOINT " + savepoint);
+}
+
 
 
 }  // namespace SQLite
