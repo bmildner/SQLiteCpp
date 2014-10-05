@@ -15,6 +15,7 @@
 #include <SQLiteCpp/Exception.h>
 
 #include <string>
+#include <sstream>
 
 #ifndef SQLITE_DETERMINISTIC
 #define SQLITE_DETERMINISTIC 0x800
@@ -33,9 +34,12 @@ Database::Database(const char* apFilename, const int aFlags /*= SQLITE_OPEN_READ
     int ret = sqlite3_open_v2(apFilename, &mpSQLite, aFlags, apVfs);
     if (SQLITE_OK != ret)
     {
-        std::string strerr = sqlite3_errmsg(mpSQLite);
+        std::ostringstream strm;
+        strm << sqlite3_errmsg(mpSQLite) << " (" << ret << ")";
+
         sqlite3_close(mpSQLite); // close is required even in case of error on opening
-        throw SQLite::Exception(strerr);
+
+        throw SQLite::Exception(strm.str());
     }
 }
 
@@ -47,9 +51,11 @@ Database::Database(const std::string& aFilename, const int aFlags /*= SQLITE_OPE
     int ret = sqlite3_open_v2(aFilename.c_str(), &mpSQLite, aFlags, aVfs.empty() ? NULL : aVfs.c_str());
     if (SQLITE_OK != ret)
     {
-        std::string strerr = sqlite3_errmsg(mpSQLite);
+        std::ostringstream strm;
+        strm << sqlite3_errmsg(mpSQLite) << " (" << ret << ")";
+
         sqlite3_close(mpSQLite); // close is required even in case of error on opening
-        throw SQLite::Exception(strerr);
+        throw SQLite::Exception(strm.str());
     }
 }
 
@@ -99,7 +105,11 @@ void Database::check(const int aRet) const
 {
     if (SQLITE_OK != aRet)
     {
-        throw SQLite::Exception(sqlite3_errmsg(mpSQLite));
+        std::ostringstream strm;
+
+        strm << sqlite3_errmsg(mpSQLite) << " (" << aRet << ")";
+
+        throw SQLite::Exception(strm.str());
     }
 }
 

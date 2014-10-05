@@ -16,7 +16,7 @@
 #include <SQLiteCpp/Exception.h>
 
 #include <string>
-
+#include <sstream>
 
 namespace SQLite
 {
@@ -184,7 +184,11 @@ bool Statement::executeStep()
         {
             mbOk = false;
             mbDone = false;
-            throw SQLite::Exception(sqlite3_errmsg(mStmtPtr));
+
+            std::ostringstream strm;
+            strm << sqlite3_errmsg(mStmtPtr) << " (" << ret << ")";
+
+            throw SQLite::Exception(strm.str());
         }
     }
     else
@@ -216,7 +220,11 @@ int Statement::exec()
         {
             mbOk = false;
             mbDone = false;
-            throw SQLite::Exception(sqlite3_errmsg(mStmtPtr));
+
+            std::ostringstream strm;
+            strm << sqlite3_errmsg(mStmtPtr) << " (" << ret << ")";
+
+            throw SQLite::Exception(strm.str());
         }
     }
     else
@@ -265,7 +273,11 @@ void Statement::check(const int aRet) const
 {
     if (SQLITE_OK != aRet)
     {
-        throw SQLite::Exception(sqlite3_errmsg(mStmtPtr));
+        std::ostringstream strm;
+
+        strm << sqlite3_errmsg(mStmtPtr) << " (" << aRet << ")";
+
+        throw SQLite::Exception(strm.str());
     }
 }
 
@@ -288,7 +300,10 @@ Statement::Ptr::Ptr(sqlite3* apSQLite, std::string& aQuery) :
     int ret = sqlite3_prepare_v2(apSQLite, aQuery.c_str(), static_cast<int>(aQuery.size()), &mpStmt, NULL);
     if (SQLITE_OK != ret)
     {
-        throw SQLite::Exception(sqlite3_errmsg(mpSQLite));
+        std::ostringstream strm;
+        strm << sqlite3_errmsg(mpSQLite) << " (" << ret << ")";
+
+        throw SQLite::Exception(strm.str());
     }
     // Initialize the reference counter of the sqlite3_stmt :
     // used to share the mStmtPtr between Statement and Column objects;
