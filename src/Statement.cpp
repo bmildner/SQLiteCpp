@@ -316,7 +316,7 @@ Statement::Ptr::Ptr(sqlite3* apSQLite, std::string& aQuery) :
     if (SQLITE_OK != mLastStatus)
     {
         std::ostringstream strm;
-        strm << sqlite3_errmsg(mpSQLite) << " (" << ret << ")";
+        strm << sqlite3_errmsg(mpSQLite) << " (" << mLastStatus << ")";
 
         throw SQLite::Exception(strm.str());
     }
