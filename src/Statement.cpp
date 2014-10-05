@@ -58,6 +58,17 @@ void Statement::reset()
     check(ret);
 }
 
+// Clears away all the bindings of a prepared statement.
+// "Contrary to the intuition of many, [sqlite3_reset()] does not reset
+//    ** the [sqlite3_bind_blob | bindings] on a [prepared statement]."
+void Statement::clearBindings(void)
+{
+    mbOk = false;
+    mbDone = false;
+    int ret = sqlite3_clear_bindings(mStmtPtr);
+    check(ret);
+}
+
 // Bind an int value to a parameter "?", "?NNN", ":VVV", "@VVV" or "$VVV" in the SQL prepared statement
 void Statement::bind(const int aIndex, const int& aValue)
 {
@@ -171,6 +182,7 @@ bool Statement::executeStep()
     if (false == mbDone)
     {
         int ret = sqlite3_step(mStmtPtr);
+        mStmtPtr.setLastStatus(ret);
         if (SQLITE_ROW == ret) // one row is ready : call getColumn(N) to access it
         {
             mbOk = true;
@@ -193,7 +205,7 @@ bool Statement::executeStep()
     }
     else
     {
-        throw SQLite::Exception("Statement need to be reseted");
+        throw SQLite::Exception("Statement needs to be reset");
     }
 
     return mbOk; // true only if one row is accessible by getColumn(N)
@@ -205,6 +217,7 @@ int Statement::exec()
     if (false == mbDone)
     {
         int ret = sqlite3_step(mStmtPtr);
+        mStmtPtr.setLastStatus(ret);
         if (SQLITE_DONE == ret) // the statement has finished executing successfully
         {
             mbOk = false;
@@ -269,8 +282,9 @@ bool Statement::isColumnNull(const int aIndex) const
 }
 
 // Check if aRet equal SQLITE_OK, else throw a SQLite::Exception with the SQLite error message
-void Statement::check(const int aRet) const
+void Statement::check(const int aRet)
 {
+    mStmtPtr.setLastStatus(aRet);
     if (SQLITE_OK != aRet)
     {
         std::ostringstream strm;
@@ -295,10 +309,11 @@ void Statement::check(const int aRet) const
 Statement::Ptr::Ptr(sqlite3* apSQLite, std::string& aQuery) :
     mpSQLite(apSQLite),
     mpStmt(NULL),
-    mpRefCount(NULL)
+    mpRefCount(NULL),
+    mLastStatus(SQLITE_OK)
 {
-    int ret = sqlite3_prepare_v2(apSQLite, aQuery.c_str(), static_cast<int>(aQuery.size()), &mpStmt, NULL);
-    if (SQLITE_OK != ret)
+    mLastStatus = sqlite3_prepare_v2(apSQLite, aQuery.c_str(), static_cast<int>(aQuery.size()), &mpStmt, NULL);
+    if (SQLITE_OK != mLastStatus)
     {
         std::ostringstream strm;
         strm << sqlite3_errmsg(mpSQLite) << " (" << ret << ")";
@@ -319,7 +334,8 @@ Statement::Ptr::Ptr(sqlite3* apSQLite, std::string& aQuery) :
 Statement::Ptr::Ptr(const Statement::Ptr& aPtr) :
     mpSQLite(aPtr.mpSQLite),
     mpStmt(aPtr.mpStmt),
-    mpRefCount(aPtr.mpRefCount)
+    mpRefCount(aPtr.mpRefCount),
+    mLastStatus(SQLITE_OK)
 {
     assert(NULL != mpRefCount);
     assert(0 != *mpRefCount);
@@ -345,7 +361,8 @@ Statement::Ptr::~Ptr() noexcept // nothrow
         // as no Statement not Column objet use it anymore
         int ret = sqlite3_finalize(mpStmt);
         // Never throw an exception in a destructor
-        SQLITECPP_ASSERT(SQLITE_OK == ret, sqlite3_errmsg(mpSQLite));  // See SQLITECPP_ENABLE_ASSERT_HANDLER
+        SQLITECPP_ASSERT((SQLITE_OK == ret || mLastStatus == ret),
+          sqlite3_errmsg(mpSQLite));  // See SQLITECPP_ENABLE_ASSERT_HANDLER
 
         // and delete the reference counter
         delete mpRefCount;
