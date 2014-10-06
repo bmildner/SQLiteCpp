@@ -21,7 +21,7 @@ namespace SQLite
 /**
  * @brief Encapsulation of the error message from SQLite3, based on std::runtime_error.
  */
-class Exception : public virtual std::runtime_error
+class Exception : public std::runtime_error
 {
 public:
     /**
